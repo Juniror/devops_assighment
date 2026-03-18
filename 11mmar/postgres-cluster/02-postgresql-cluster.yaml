@@ -1,0 +1,190 @@
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: bookstore-postgres-cluster
+  namespace: dev
+  labels:
+    app: bookstore-postgres-cluster
+    environment: dev
+spec:
+  # Team ID - ใช้สำหรับ organize clusters
+  teamId: "bookstore"
+
+  # PostgreSQL version
+  postgresql:
+    version: "17"
+
+    # Parameters สำหรับ performance tuning
+    parameters:
+      # Connection settings
+      max_connections: "200"
+      superuser_reserved_connections: "5"
+
+      # Memory settings
+      shared_buffers: "256MB"
+      effective_cache_size: "768MB"
+      work_mem: "4MB"
+      maintenance_work_mem: "64MB"
+
+      # WAL settings
+      wal_level: "replica"
+      max_wal_senders: "10"
+      max_replication_slots: "10"
+      wal_keep_size: "1GB"
+
+      # Checkpoint settings
+      checkpoint_completion_target: "0.9"
+
+      # Query tuning
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+
+      # Logging
+      log_destination: "stderr"
+      logging_collector: "on"
+      log_min_duration_statement: "1000"  # Log queries > 1s
+      log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+      log_timezone: "UTC"
+
+      # Autovacuum
+      autovacuum: "on"
+      autovacuum_max_workers: "3"
+
+  # Number of instances (1 Primary + 2 Replicas)
+  numberOfInstances: 3
+
+  # Users configuration
+  users:
+    bookstore_user:
+      - superuser
+      - createdb
+
+  # Databases configuration
+  databases:
+    bookstore: bookstore_user
+
+  # Enable connection pooler (PgBouncer)
+  enableConnectionPooler: true
+  enableReplicaConnectionPooler: true  # Enable pooler for replica service
+  connectionPooler:
+    numberOfInstances: 2
+    mode: "transaction"
+    schema: "pooler"
+    user: "pooler"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+      limits:
+        cpu: 500m
+        memory: 500Mi
+
+  # Enable logical backup (เปิดใช้งาน - backup ไป MinIO local)
+  enableLogicalBackup: true
+  logicalBackupSchedule: "30 2 * * *"  # ทุกวันเวลา 02:30 UTC
+
+  # Volume configuration
+  volume:
+    size: 5Gi
+    storageClass: standard
+
+  # Resources for PostgreSQL pods
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  # Patroni configuration
+  patroni:
+    # ตั้งค่า failover
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 33554432  # 32MB
+
+    # Synchronous mode settings
+    synchronous_mode: false
+    synchronous_mode_strict: false
+
+    # Slots configuration
+    slots:
+      bookstore_logical_slot:
+        type: logical
+        database: bookstore
+        plugin: pgoutput
+
+  # Init containers สำหรับ setup
+  initContainers:
+    - name: init-script
+      image: postgres:17-alpine
+      command:
+        - sh
+        - -c
+        - |
+          echo "Initialization script placeholder"
+          # Script จะรันผ่าน preparedDatabases แทน
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+
+  # Prepared databases with init scripts
+  preparedDatabases:
+    bookstore:
+      defaultUsers: true
+      extensions:
+        pg_stat_statements: public
+        pgcrypto: public
+      schemas:
+        public:
+          defaultUsers: true
+          defaultRoles: true
+      # เชื่อมต่อ init script จาก ConfigMap
+      secretNamespace: dev
+
+  # Sidecars (optional - สำหรับ monitoring)
+  sidecars:
+    - name: exporter
+      image: quay.io/prometheuscommunity/postgres-exporter:latest
+      ports:
+        - containerPort: 9187
+          name: metrics
+          protocol: TCP
+      env:
+        - name: DATA_SOURCE_USER
+          value: "postgres"
+        - name: DATA_SOURCE_PASS
+          valueFrom:
+            secretKeyRef:
+              name: postgres.bookstore-postgres-cluster.credentials.postgresql.acid.zalan.do
+              key: password
+        - name: DATA_SOURCE_URI
+          value: "localhost:5432/postgres?sslmode=disable"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 100Mi
+        limits:
+          cpu: 500m
+          memory: 500Mi
+
+  # Service annotations
+  serviceAnnotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # สำหรับ AWS
+
+  # Pod annotations
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9187"
+    prometheus.io/path: "/metrics"
+
+ 
+  maintenanceWindows:
+    - "Mon:02:00-03:00"
+    - "Sat:03:00-05:00"

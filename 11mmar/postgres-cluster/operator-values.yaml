@@ -1,0 +1,12 @@
+configKubernetes:
+    enable_pod_antiaffinity: true
+    enable_cross_namespace_secret: true
+
+configLogicalBackup:
+    logical_backup_docker_image: "ghcr.io/zalando/postgres-operator/logical-backup:v1.14.0"
+    logical_backup_provider: "s3"
+    logical_backup_s3_bucket: "postgres-backups"
+    logical_backup_s3_endpoint: "http://minio.dev.svc.cluster.local:9000"
+    logical_backup_s3_region: "us-east-1"
+    logical_backup_cronjob_environment_secret: "postgres-backup-minio"
+    logical_backup_schedule: "30 00 * * *"
