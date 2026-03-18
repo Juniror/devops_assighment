@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: dev
+spec:
+  hard:
+    requests.cpu: "10"            # รวม CPU requests ทั้งหมดสูงสุด 10 cores
+    requests.memory: 20Gi         # รวม memory requests ทั้งหมดสูงสุด 20Gi
+    limits.cpu: "20"              # รวม CPU limits ทั้งหมดสูงสุด 20 cores
+    limits.memory: 40Gi           # รวม memory limits ทั้งหมดสูงสุด 40Gi
+    persistentvolumeclaims: "10"  # สร้าง PVC ได้ไม่เกิน 10 อัน
+    pods: "50"                    # รัน Pod ได้ไม่เกิน 50 ตัว

@@ -1,0 +1,24 @@
+# Sidecar Pattern
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-with-logging
+spec:
+  containers:
+  # Main application
+  - name: web
+    image: nginx
+    volumeMounts:
+    - name: logs
+      mountPath: /var/log/nginx
+  
+  # Sidecar: log collector
+  - name: log-collector
+    image: fluentd
+    volumeMounts:
+    - name: logs
+      mountPath: /logs
+  
+  volumes:
+  - name: logs
+    emptyDir: {}

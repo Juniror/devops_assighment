@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bookstore-api-config
+  namespace: dev
+  labels:
+    app: bookstore-api
+data:
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "bookstore"
+  DB_USER: "bookstore_user"

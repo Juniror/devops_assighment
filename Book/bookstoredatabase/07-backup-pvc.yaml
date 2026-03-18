@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-pvc
+  namespace: dev
+  labels:
+    app: postgres-backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: postgres-storage
+  resources:
+    requests:
+      storage: 10Gi

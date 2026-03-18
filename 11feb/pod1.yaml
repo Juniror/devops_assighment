@@ -1,0 +1,10 @@
+apiVersion: v1          # API version
+kind: Pod               # ประเภทของ object
+metadata:               # ข้อมูลเกี่ยวกับ object
+  name: my-pod
+  labels:
+    app: web
+spec:                   # Desired state
+  containers:
+  - name: nginx
+    image: nginx:1.21

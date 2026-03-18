@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bookstore-api-ingress
+  namespace: dev
+  labels:
+    app: bookstore-api
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: bookstore-api.local
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: bookstore-api-service
+            port:
+              number: 8080
+      - path: /docs
+        pathType: Prefix
+        backend:
+          service:
+            name: bookstore-api-service
+            port:
+              number: 8080
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: bookstore-api-service
+            port:
+              number: 8080

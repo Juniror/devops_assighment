@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: dev
+  labels:
+    app: postgres-backup
+spec:
+  schedule: "0 2 * * *"  # ทุกวัน 2 AM
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+        spec:
+          containers:
+          - name: backup
+            image: postgres:17-alpine
+            command:
+              - /bin/sh
+              - -c
+              - |
+                echo "Starting backup at $(date)"
+
+                # Create backup
+                pg_dump -h postgres-service \
+                        -U bookstore_user \
+                        bookstore > /backup/backup-$(date +%Y%m%d-%H%M%S).sql
+
+                if [ $? -eq 0 ]; then
+                  echo "Backup completed successfully: backup-$(date +%Y%m%d-%H%M%S).sql"
+
+                  # Cleanup backups older than 7 days
+                  find /backup -name "backup-*.sql" -mtime +7 -delete
+                  echo "Old backups cleaned up"
+
+                  # Show current backups
+                  echo "Current backups:"
+                  ls -lh /backup/
+                else
+                  echo "Backup failed!"
+                  exit 1
+                fi
+            env:
+              - name: PGPASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-secret
+                    key: POSTGRES_PASSWORD
+            volumeMounts:
+              - name: backup-storage
+                mountPath: /backup
+            resources:
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+              requests:
+                memory: "256Mi"
+                cpu: "250m"
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: backup-pvc
+          restartPolicy: OnFailure

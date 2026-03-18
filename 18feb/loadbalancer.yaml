@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-loadbalancer
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  ports:
+  - port: 8080 # port ที่เปิดบน LoadBalancer IP
+    targetPort: 80

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app
+spec:
+  containers:
+  - name: app
+    image: nginx:alpine
+    # ใช้เฉพาะ database_url และ cache_size เป็น Environment Variables
+    env:
+    - name: database_url
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: database_url
+    - name: cache_size
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: cache_size
+
+    # ใช้เฉพาะ app.properties เป็นไฟล์
+    volumeMounts:
+    - name: config
+      mountPath: /config
+
+  volumes:
+  - name: config
+    configMap:
+      name: app-config
+      items:
+      - key: app.properties
+        path: app.properties

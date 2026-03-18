@@ -1,0 +1,110 @@
+# Deployment 1 : Main Website
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: main-website
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: main-website
+  template:
+    metadata:
+      labels:
+        app: main-website
+    spec:
+      containers:
+      - name: web
+        image: nginxdemos/hello:plain-text
+        ports:
+        - containerPort: 80
+        env:
+        - name: NGINX_HOST
+          value: "main-website.local"
+
+---
+# Deployment 2 : API Service
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-service
+  template:
+    metadata:
+      labels:
+        app: api-service
+    spec:
+      containers:
+      - name: api
+        image: hashicorp/http-echo:0.2.3
+        args:
+        - "-text=API Service Response: Version 1.0.0"
+        ports:
+        - containerPort: 5678
+
+---
+# Service 1 : สำหรับ Main Website
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: main-website-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: main-website
+  ports:
+  - port: 80
+    targetPort: 80
+
+---
+# Service 2 : สำหรับ API Service
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: api-service
+  ports:
+  - port: 80
+    targetPort: 5678
+
+---
+# Ingress Resource
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  annotations:
+    # Rewrite URL สำหรับ /api/* -> /*
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: main-website-svc
+            port:
+              number: 80
+
+      - path: /api(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: api-service-svc
+            port:
+              number: 80

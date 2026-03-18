@@ -1,0 +1,21 @@
+# PodMonitor for PostgreSQL Cluster (Zalando Postgres Operator)
+# Scrapes metrics from postgres-exporter sidecar on port 9187
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: bookstore-postgres-cluster
+  namespace: dev
+  labels:
+    app: bookstore-postgres-cluster
+    release: kube-prometheus          # ต้องตรงกับ label ที่ Prometheus Operator ใช้ select
+spec:
+  selector:
+    matchLabels:
+      application: spilo              # label ที่ Zalando Operator ใส่ให้ PostgreSQL pods
+  namespaceSelector:
+    matchNames:
+      - dev
+  podMetricsEndpoints:
+    - port: metrics                   # ชื่อ port ที่กำหนดไว้ใน sidecars (containerPort: 9187, name: metrics)
+      path: /metrics
+      interval: 15s
